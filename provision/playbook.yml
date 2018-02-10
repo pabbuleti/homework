@@ -4,4 +4,63 @@
   tasks:
     - include: tasks/deps.yml
 
-    # your code goes here ...
+---
+
+- name: Install role dependencies
+  apt:
+    name: 'python-passlib'
+    state: 'present'
+  when: nginx_basic_auth
+
+- name: Install nginx
+  apt:
+    name: 'nginx'
+    state: 'present'
+  when: nginx_install_service
+  notify:
+    - Test nginx and restart
+
+- name: Create default nginx directories
+  file:
+    path: '{{ item }}'
+    state: 'directory'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+  with_items:
+    - '/usr/share/nginx/html'
+    - '{{ nginx_letsencrypt_root }}'
+    - '/etc/nginx/sites-available'
+    - '/etc/nginx/sites-enabled'
+    - '/etc/nginx/conf.d'
+    - '/etc/nginx/ssl'
+- name: Configure nginx config
+  template:
+    src: 'config/nginx.conf'
+    dest: '/etc/nginx/nginx.conf'
+    group: 'root'
+    owner: 'root'
+    mode: '0644'
+- name: Configure nginx ssl key
+  template:
+    src: 'files/self-signed.key'
+    dest: '/root/certs/APPNAME/ssl.key'
+    group: 'root'
+    owner: 'root'
+    mode: '0644'
+- name: Configure nginx crt
+  template:
+    src: 'files/self-signed.crt'
+    dest: '/root/certs/APPNAME/APPNAME_nl.chained.crt'
+    group: 'root'
+    owner: 'root'
+    mode: '0644' 
+- name: Unarchive a file 
+  unarchive:
+    src: application.zip 
+    dest: /opt/applicat
+  register: nginx_register_nginx_config
+  notify:
+    - Test nginx and reload
+  when: (nginx_register_nginx_config | changed) and (nginx_register_vhost_config | changed)
+
